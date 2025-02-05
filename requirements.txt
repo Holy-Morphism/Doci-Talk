@@ -1,0 +1,6 @@
+streamlit 
+openai-whisper
+torch
+python-dotenv
+llama-index
+groq
