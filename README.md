@@ -1,6 +1,8 @@
-# Whisper Transcriber
+# Doci-Talk 🤖
 
-A Python application that transcribes audio files using OpenAI's Whisper model.
+A Python application that transcribes audio files using OpenAI's Whisper model and thenqueries uploaded data
+
+![Doci-Talk](./Doci-Talk.png)
 
 ## Setup
 
