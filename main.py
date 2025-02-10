@@ -8,6 +8,7 @@ import tempfile
 import os
 from dotenv import load_dotenv
 load_dotenv()
+import shutil  
 
 
 @st.cache_resource
@@ -36,33 +37,45 @@ if uploaded_files:
     
     st.success("Files uploaded successfully!")
     
-    index = load_data(UPLOAD_DIR)
+    try:
+        index = load_data(UPLOAD_DIR)
+        audio_value = st.audio_input("Ask a question")
 
-    audio_value = st.audio_input("Ask a question")
+        if audio_value:
+            st.audio(audio_value)
 
-    if audio_value:
-        st.audio(audio_value)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_value.name)[1]) as tmp_file:
+                tmp_file.write(audio_value.getvalue())
+                tmp_file_path = tmp_file.name
+            
+            try:
+                with open(tmp_file_path, "rb") as file:
+                    transcription = client.audio.transcriptions.create(
+                        file=(tmp_file_path, file.read()),
+                        model="whisper-large-v3-turbo",
+                        prompt="Specify context or spelling",
+                        response_format="json",
+                        language="en",
+                        temperature=0.0
+                    )
+                
+                st.write("Transcription:")
+                st.write(transcription.text)
+                query_engine = index.as_query_engine()
+                with st.spinner("Generating response..."):
+                    response = query_engine.query(transcription.text)
+                    st.write("Response:")
+                    st.write(response.response)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_value.name)[1]) as tmp_file:
-            tmp_file.write(audio_value.getvalue())
-            tmp_file_path = tmp_file.name
-        
-        with open(tmp_file_path, "rb") as file:
-            transcription = client.audio.transcriptions.create(
-                file=(tmp_file_path, file.read()),
-                model="whisper-large-v3-turbo",
-                prompt="Specify context or spelling",
-                response_format="json",
-                language="en",
-                temperature=0.0
-            )
+            finally:
+                # Clean up the temporary audio file
+                if os.path.exists(tmp_file_path):
+                    os.remove(tmp_file_path)
 
-        
-        st.write("Transcription:")
-        st.write(transcription.text)
-        query_engine = index.as_query_engine()
-        response = query_engine.query(transcription.text)
-        st.write("Response:")
-        st.write(response.response)
+    finally:
+        # Clean up the uploaded files
+        if os.path.exists(UPLOAD_DIR):
+            shutil.rmtree(UPLOAD_DIR)
+            os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
